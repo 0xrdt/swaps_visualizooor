@@ -44,11 +44,11 @@ minimum_swap_size_usd = number_col2.number_input(
     "minimum swap size in USD", value=500, min_value=1, max_value=100_000_000_000_000, step=1
 )
 
-checkbox_col1, checkbox_col2, checkbox_col3 = st.columns(3)
+checkbox_col1, checkbox_col2, checkbox_col3, checkbox_col4 = st.columns(4)
 should_filter_by_date = checkbox_col1.checkbox("filter by date")
 should_show_raw_data = checkbox_col2.checkbox("show raw data")
 should_show_scatter_plot = checkbox_col3.checkbox("show scatter plot")
-
+should_show_metrics = checkbox_col4.checkbox("show metrics")
 
 if should_filter_by_date:
     date_col1, date_col2 = st.columns(2)
@@ -99,7 +99,7 @@ def get_data(query):
     return df
 
 
-if should_show_raw_data or should_show_scatter_plot:
+if should_show_raw_data or should_show_scatter_plot or should_show_metrics:
     swaps = get_data(swaps_query).copy()
 
     if len(swaps) == 0:
@@ -190,3 +190,28 @@ if should_show_scatter_plot:
     # fig.update_yaxes(matches=None)
 
     st.plotly_chart(fig, use_container_width=True)
+
+if should_show_metrics:
+    st.write("## metrics")
+
+    st.write('### swap volume')
+    volume_per_side = swaps.pivot_table(columns=['SIDE'],values=['AMOUNT_IN_USD', 'AMOUNT_TOKEN_A', 'AMOUNT_TOKEN_B'], aggfunc='sum')
+
+    # compute total
+    total_volume_usd = swaps['AMOUNT_IN_USD'].sum()
+    total_volume_token_a = swaps['AMOUNT_TOKEN_A'].sum()
+    total_volume_token_b = swaps['AMOUNT_TOKEN_B'].sum()
+    volume_total = pd.DataFrame({'AMOUNT_IN_USD': [total_volume_usd], 'AMOUNT_TOKEN_A': [total_volume_token_a], 'AMOUNT_TOKEN_B': [total_volume_token_b], 'SIDE': ['total']})
+    volume_agg = pd.concat([volume_per_side.T.reset_index(), volume_total], ignore_index=True)
+    st.write(volume_agg)
+
+    st.write('### number of swaps')
+    count_per_side = swaps.pivot_table(columns=['SIDE'],values=['TX_HASH'], aggfunc='count')
+    count_per_side = count_per_side.T.reset_index()
+    count_per_side = count_per_side.rename(columns={'TX_HASH': 'count'})
+
+    # compute total
+    total_count = swaps['TX_HASH'].count()
+    count_total = pd.DataFrame({'count': [total_count], 'SIDE': ['total']})
+    count_agg = pd.concat([count_per_side, count_total], ignore_index=True)
+    st.write(count_agg)
