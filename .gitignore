@@ -1,0 +1,4 @@
+secrets_template.toml
+__pycache__
+.venv
+.DS_Store
