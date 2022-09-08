@@ -22,7 +22,7 @@ st.set_page_config(
 st.write("# swaps visualizer")
 
 st.warning(
-    "follow me on [twitter](www.twitter.com/0xdoing) and feel free to DM me if you have any questions or comments :)"
+    "follow me on [twitter](https://www.twitter.com/0xdoing) and feel free to DM me if you have any questions or comments :)"
 )
 st.info(
     "this tool is only available on Ethereum, and it covers Uniswap, Sushiswap, Balancer and Curve swaps"
