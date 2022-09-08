@@ -12,14 +12,14 @@ SHROOM_DK_KEY = st.secrets['SHROOM_DK_KEY']
 
 # %% get params
 st.set_page_config(
-    page_title="swaps visualizer",
+    page_title="swaps visualizooor",
     page_icon="🔄",
     layout="wide",
     initial_sidebar_state="collapsed",
     # menu_items={'About': "something"}
 )
 
-st.write("# swaps visualizer")
+st.write("# swaps visualizooor")
 
 st.warning(
     "follow me on [twitter](https://www.twitter.com/0xdoing) and feel free to DM me if you have any questions or comments :)"
