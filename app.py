@@ -2,10 +2,13 @@
 import datetime
 import sys
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 from shroomdk import ShroomDK
+
+SHROOM_DK_KEY = st.secrets['SHROOM_DK_KEY']
 
 # %% get params
 st.set_page_config(
@@ -23,14 +26,20 @@ st.info(
     "this tool is only available on Ethereum, and it covers Uniswap, Sushiswap, Balancer and Curve swaps"
 )
 
-token_a = st.text_input("symbol or address of the token A", "USDC")
-token_b = st.text_input("symbol or address of the token B", "WETH")
+token_a = st.text_input("symbol or address of the token A", "USDC").strip()
+token_b = st.text_input("symbol or address of the token B", "WETH").strip()
 
 type_a = "token" if len(token_a) == 42 else "symbol"
 type_b = "token" if len(token_b) == 42 else "symbol"
 
-number_of_trades = st.number_input(
+number_col1, number_col2 = st.columns(2)
+
+number_of_trades = number_col1.number_input(
     "number of trades to show", value=10_000, min_value=1, max_value=100_000
+)
+
+minimum_swap_size_usd = number_col2.number_input(
+    "minimum swap size in USD", value=500, min_value=1, max_value=100_000_000_000_000, step=1
 )
 
 checkbox_col1, checkbox_col2, checkbox_col3 = st.columns(3)
@@ -58,6 +67,7 @@ SELECT
 FROM ethereum.core.ez_dex_swaps 
 WHERE 1=1
   and lower({type_a}_in)=lower('{token_a}') and lower({type_b}_out)=lower('{token_b}')
+  and amount_in_usd > {minimum_swap_size_usd}
   {time_filter}
 
 UNION ALL
@@ -68,6 +78,7 @@ SELECT
 FROM ethereum.core.ez_dex_swaps 
 WHERE 1=1
   and lower({type_a}_out)=lower('{token_a}') and lower({type_b}_in)=lower('{token_b}')
+  and amount_in_usd > {minimum_swap_size_usd}
   {time_filter}
 
 ORDER BY block_timestamp DESC
@@ -79,7 +90,7 @@ LIMIT {number_of_trades}
 @st.cache(ttl=15)
 def get_data(query):
     # Initialize `ShroomDK` with your API Key
-    sdk = ShroomDK(st.secrets['SHROOM_DK_KEY'])
+    sdk = ShroomDK(SHROOM_DK_KEY)
 
     query_result_set = sdk.query(query)
     df = pd.DataFrame(query_result_set.rows, columns=query_result_set.columns)
@@ -120,6 +131,8 @@ if should_show_raw_data or should_show_scatter_plot:
         swaps["AMOUNT_TOKEN_A"] / swaps["AMOUNT_TOKEN_B"]
     )
 
+    swaps['AMOUNT_IN_USD'] = swaps['AMOUNT_IN_USD'].fillna(0)
+
 # %% show raw data
 if should_show_raw_data:
     st.write("## raw data")
@@ -142,10 +155,14 @@ if should_show_scatter_plot:
     )
     
     should_breakdown_by_platform = st.checkbox("breakdown by platform")
+    should_use_log_scale = st.checkbox("use log scale for the bubble size")
     
     filter_platform = st.multiselect("filter by platform", swaps["PLATFORM"].unique(), default=swaps["PLATFORM"].unique())
 
     tmp = swaps[swaps["PLATFORM"].isin(filter_platform)]
+
+    if should_use_log_scale:
+        tmp["AMOUNT_IN_USD_LOG"] = tmp["AMOUNT_IN_USD"].apply(lambda x: np.log(x))
 
     fig = px.scatter(
         tmp,
@@ -153,7 +170,7 @@ if should_show_scatter_plot:
         y="PRICE_TOKEN_A_TO_TOKEN_B",
         color="SIDE",
         opacity=0.5,
-        size="AMOUNT_IN_USD",
+        size="AMOUNT_IN_USD" if not should_use_log_scale else "AMOUNT_IN_USD_LOG",
         height=800,
         hover_data=[
             "PLATFORM",
